@@ -1,0 +1,28 @@
+name: Build and Deploy #工作流的名字，如果省略则默认是文件名
+on: #指定触发该workflow的条件，这里是当main分支push之后，这里也可以是事件的数组（数组里的项都能触发workflow）
+  push:
+    branches:
+      - main
+permissions: #对workflow授予权限，这里是授予对仓库内容的写权限（因为github之后需要创建一个新分支，将build后的代码放在那个分支上）
+  contents: write
+jobs: #这里就是工作流
+  build-and-deploy: #构建和部署，这只是一个job的名字,随意
+    concurrency: ci-${{ github.ref }} #这里是连续多个部署可以开启，默认是使用的
+    runs-on: ubuntu-latest #指定运行所需的虚拟机环境：必填，这里的是linux-ubuntu系统
+    steps:
+      #通过-分开每个step，这里是三步：获取源码、安装依赖并构建、部署
+      - name: Checkout
+        uses: actions/checkout@v3 #通过uses使用市场现成的包，这个包是获取到仓库源码。
+
+      - name: Install and Build #npm ci和npm install都可以用来安装依赖，但是ci旨在用于自动化环境，例如测试平台、持续集成和部署或者你希望对依赖项进行全新安装
+        #run里是终端里执行的命令
+        run: |
+          npm ci  
+          npm run build
+
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: dist #构建好的文件夹位置（我们的vue项目会生成一个dist文件夹，然后github会将生成的这个文件夹的内容拿出来放到下面的BRANCH分支上）
+          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }} #github密钥
+          BRANCH: gh-pages #构建好文件夹放在哪个分支上，
